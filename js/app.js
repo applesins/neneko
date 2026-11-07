@@ -2085,15 +2085,11 @@ function ConsultStreet({
     }, d.cta, React.createElement(Icon, {
       name: "arrow-right",
       size: 16
-    }))), React.createElement("div", {
-      className: "cs-noren2"
-    }, React.createElement(NorenKit, {
-      label: d.noren,
+    }))), React.createElement(CsNoren, {
       tone: d.tone,
       state: st,
-      onOpen: () => {},
-      sway: true
-    }))), d.k === 'th' && React.createElement("span", {
+      label: d.noren
+    })), d.k === 'th' && React.createElement("span", {
       className: "cs-poster",
       "aria-hidden": "true"
     }, React.createElement("b", null, L.poster), React.createElement("i", null), React.createElement("small", null, "\u306D\u306D\u30CD\u30B3")));
@@ -2655,7 +2651,7 @@ function Exhibition({
       entrance: L.entrance,
       exit: L.exit
     },
-    collapsible: narrow,
+    collapsible: true,
     defaultOpen: !narrow
   })), detail != null && React.createElement(RoomDetail, {
     r: rooms[detail],
@@ -2999,7 +2995,7 @@ function Theatre({
     current: cur,
     onJump: jump,
     title: L.program,
-    collapsible: narrow,
+    collapsible: true,
     defaultOpen: !narrow
   })), detail != null && React.createElement(ActDetail, {
     a: acts[detail],

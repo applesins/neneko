@@ -637,7 +637,6 @@ a:hover{color:var(--exhibit)}
 .th-m .program-dock.is-compact{left:auto;right:12px;top:30px;bottom:auto;display:block}
 .th-m .program-dock.is-compact nav{width:200px!important}
 @media (max-width:767px){.th-header{top:28px}.th-m~.site-foot{padding-bottom:28px}}
-.cs-rod{width:300px;margin-left:-150px}
 .overture-beam{position:relative;height:clamp(260px,48vh,460px);display:flex;align-items:flex-end;justify-content:center;margin:0 calc(var(--gutter) * -1);overflow:hidden}
 .overture-beam .beam{position:absolute;top:0;left:50%;width:min(110vw,1100px);margin-left:calc(min(110vw,1100px) / -2);height:100%;background:conic-gradient(from 162deg at 50% 0,rgba(255,240,205,0) 0deg,rgba(255,240,205,.16) 8deg,rgba(255,240,205,.3) 18deg,rgba(255,240,205,.16) 28deg,rgba(255,240,205,0) 36deg,rgba(255,240,205,0) 360deg);-webkit-mask-image:linear-gradient(#000 30%,rgba(0,0,0,.35) 85%,transparent);mask-image:linear-gradient(#000 30%,rgba(0,0,0,.35) 85%,transparent);transform-origin:50% 0;transform:scaleY(.2);opacity:0;transition:transform 900ms var(--ease-out),opacity 900ms var(--ease-out)}
 .overture-beam::before{content:"";position:absolute;left:50%;top:-10px;width:44px;height:20px;margin-left:-22px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,246,220,.9),rgba(255,236,196,0) 70%);z-index:1}
@@ -769,7 +768,6 @@ p,dd,li,blockquote,figcaption{text-wrap:pretty}
 .desk-d.is-open .desk-noren{height:0}
 .desk-m-noren{height:auto!important;overflow:visible}
 .desk-m.is-open .desk-m-noren{height:0!important;overflow:hidden}
-.cs-noren{display:none}
 .cs-noren2{position:absolute;left:0;right:0;top:0;z-index:3;pointer-events:none}
 .cs-noren2 .nr{--pw:60px}
 .cs-noren2 .nr-btn{cursor:default}
@@ -781,6 +779,10 @@ p,dd,li,blockquote,figcaption{text-wrap:pretty}
 .desk-m .nr{--pw:56px}
 }
 @media (prefers-reduced-motion:reduce){.nr-sway .nr-cloth{animation:none}.nr-p{transition:none}}
-.cs-ex .cs-counter{left:27%;right:27%}.cs-ex .cs-uketsuke{right:33%}
 @media (max-width:767px){.street-deck .deck-slide{padding:0 12px}}
+.nr-rod{height:7px;top:7px;border-radius:6px;background:var(--wood-3);box-shadow:none}
+.nr-cap,.nr-sleeve{display:none}
+.nr-cloth{aspect-ratio:1 / 1.15;margin-top:0;box-shadow:none;border-radius:0 0 3px 3px}
+.nr-cloth b{top:50%}
+.letters{scrollbar-width:none;-ms-overflow-style:none}.letters::-webkit-scrollbar{display:none}
 a{color:var(--ink-1)}a:hover{color:var(--matcha-1)}
