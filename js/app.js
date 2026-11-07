@@ -143,7 +143,126 @@ function scrollToId(id, smooth = true) {
     behavior: smooth && !reduce ? 'smooth' : 'auto'
   });
 }
+function SwipeDeck({
+  index,
+  onChange,
+  count = 2,
+  labels = [],
+  dark = false,
+  className = '',
+  children
+}) {
+  const reduced = useReduced();
+  const s = useRef(null);
+  const go = i => onChange((i + count) % count);
+  const ts = e => {
+    const t = e.touches[0];
+    s.current = {
+      x: t.clientX,
+      y: t.clientY,
+      lock: null
+    };
+  };
+  const tm = e => {
+    const o = s.current;
+    if (!o) return;
+    const t = e.touches[0];
+    const dx = t.clientX - o.x,
+      dy = t.clientY - o.y;
+    if (o.lock == null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) o.lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
+  };
+  const te = e => {
+    const o = s.current;
+    s.current = null;
+    if (!o || o.lock !== 'x') return;
+    const dx = e.changedTouches[0].clientX - o.x;
+    if (Math.abs(dx) > 36) go(index + (dx < 0 ? 1 : -1));
+  };
+  const kids = React.Children.toArray(children);
+  return React.createElement("div", {
+    className: 'deck ' + (dark ? 'is-dark ' : '') + className,
+    onTouchStart: ts,
+    onTouchMove: tm,
+    onTouchEnd: te,
+    onTouchCancel: () => {
+      s.current = null;
+    }
+  }, React.createElement("div", {
+    className: "deck-view"
+  }, React.createElement("div", {
+    className: "deck-track",
+    style: {
+      transform: 'translateX(' + -index * 100 + '%)',
+      transition: reduced ? 'none' : undefined
+    }
+  }, kids.map((c, i) => React.createElement("div", {
+    className: "deck-slide",
+    key: i,
+    "aria-hidden": i !== index ? 'true' : undefined
+  }, c)))), React.createElement("button", {
+    className: "deck-arrow prev",
+    "aria-label": labels[(index - 1 + count) % count] || 'Previous',
+    onClick: () => go(index - 1)
+  }, React.createElement(Icon, {
+    name: "chevron-left",
+    size: 22
+  })), React.createElement("button", {
+    className: "deck-arrow next",
+    "aria-label": labels[(index + 1) % count] || 'Next',
+    onClick: () => go(index + 1)
+  }, React.createElement(Icon, {
+    name: "chevron-right",
+    size: 22
+  })), React.createElement("div", {
+    className: "deck-dots"
+  }, kids.map((_, i) => React.createElement("button", {
+    key: i,
+    className: 'deck-dot' + (i === index ? ' on' : ''),
+    "aria-label": labels[i] || String(i + 1),
+    "aria-current": i === index ? 'true' : undefined,
+    onClick: () => onChange(i)
+  }, React.createElement("i", null)))));
+}
+function useScrolling(ms = 450) {
+  const [s, setS] = useState(false);
+  useEffect(() => {
+    let t = 0;
+    const f = () => {
+      setS(true);
+      clearTimeout(t);
+      t = setTimeout(() => setS(false), ms);
+    };
+    window.addEventListener('scroll', f, {
+      passive: true
+    });
+    return () => {
+      window.removeEventListener('scroll', f);
+      clearTimeout(t);
+    };
+  }, []);
+  return s;
+}
+function Reveal({
+  as = 'div',
+  className = '',
+  children,
+  ...rest
+}) {
+  const ref = useRef(null);
+  const v = useInView(ref, {
+    threshold: .2,
+    once: true
+  });
+  return React.createElement(as, {
+    ref,
+    className: 'rv ' + (v ? 'is-in ' : '') + className,
+    ...rest
+  }, children);
+}
 Object.assign(window, {
+  useScrolling,
+  Reveal,
+  SwipeDeck,
   useMedia,
   useReduced,
   useCompact,
@@ -155,224 +274,6 @@ Object.assign(window, {
   scrollToId,
   clamp01
 });
-/* Intro.jsx */
-const INTRO_CITIES = {
-  TPE: [121.56, 25.03],
-  LDS: [-1.55, 53.8],
-  MEL: [144.96, -37.81],
-  OSA: [135.5, 34.69]
-};
-const INTRO_LEGS = [['TPE', 'LDS', .35, 1.35, -1], ['LDS', 'TPE', 1.55, 2.4, 1], ['TPE', 'MEL', 2.6, 3.3, -1], ['MEL', 'OSA', 3.5, 4.15, -1]];
-const INTRO_END = 5.1,
-  INTRO_CAM = 4.45;
-const easeIO = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-let __land = null;
-function Intro({
-  lang,
-  onDone,
-  compact
-}) {
-  const L = window.COPY[lang];
-  const W = compact ? 375 : 1440,
-    H = compact ? 720 : 900;
-  const [land, setLand] = useState(__land);
-  const [t, setT] = useState(0);
-  const doneRef = useRef(false);
-  const finish = () => {
-    if (!doneRef.current) {
-      doneRef.current = true;
-      onDone();
-    }
-  };
-  useEffect(() => {
-    if (!land) fetch('./js/land-110m.json').then(r => r.json()).then(j => {
-      __land = topojson.feature(j, j.objects.land);
-      setLand(__land);
-    }).catch(() => {});
-    const t0 = performance.now();
-    const id = setInterval(() => {
-      const s = (performance.now() - t0) / 1000;
-      setT(s);
-      if (s >= INTRO_END) {
-        clearInterval(id);
-        finish();
-      }
-    }, 16);
-    return () => clearInterval(id);
-  }, []);
-  const geo = useMemo(() => {
-    const proj = d3.geoNaturalEarth1();
-    const pts = {
-      type: 'MultiPoint',
-      coordinates: Object.values(INTRO_CITIES)
-    };
-    if (compact) proj.fitExtent([[28, H * .3], [W - 28, H * .62]], pts);else proj.fitExtent([[W * .14, H * .2], [W * .86, H * .7]], pts);
-    const P = {};
-    for (const k in INTRO_CITIES) P[k] = proj(INTRO_CITIES[k]);
-    const legs = INTRO_LEGS.map(([a, b, s, e, side]) => {
-      const p0 = P[a],
-        p1 = P[b];
-      const dx = p1[0] - p0[0],
-        dy = p1[1] - p0[1];
-      const len = Math.hypot(dx, dy);
-      const c = [(p0[0] + p1[0]) / 2 + side * dy * .18 * (side < 0 ? 1 : .6), (p0[1] + p1[1]) / 2 - Math.abs(dx) * (side < 0 ? .22 : .08)];
-      const at = u => {
-        const v = 1 - u;
-        return [v * v * p0[0] + 2 * v * u * c[0] + u * u * p1[0], v * v * p0[1] + 2 * v * u * c[1] + u * u * p1[1]];
-      };
-      const tan = u => {
-        const v = 1 - u;
-        return Math.atan2(2 * v * (c[1] - p0[1]) + 2 * u * (p1[1] - c[1]), 2 * v * (c[0] - p0[0]) + 2 * u * (p1[0] - c[0])) * 180 / Math.PI;
-      };
-      const n = Math.max(6, Math.round(len / (compact ? 9 : 16)));
-      const dashes = Array.from({
-        length: n
-      }, (_, i) => {
-        const u = (i + .5) / n;
-        return {
-          u,
-          p: at(u),
-          a: tan(u)
-        };
-      });
-      return {
-        a,
-        b,
-        s,
-        e,
-        at,
-        tan,
-        dashes
-      };
-    });
-    return {
-      proj,
-      P,
-      legs,
-      path: d3.geoPath(proj)
-    };
-  }, [compact]);
-  const landD = useMemo(() => land ? geo.path(land) : '', [land, geo]);
-  let plane = null;
-  for (const lg of geo.legs) {
-    if (t >= lg.s && t <= lg.e + .25) {
-      const u = easeIO(clamp01((t - lg.s) / (lg.e - lg.s)));
-      plane = {
-        p: lg.at(u),
-        a: lg.tan(Math.min(u, .995))
-      };
-    }
-  }
-  if (!plane && t < geo.legs[0].s) plane = {
-    p: geo.P.TPE,
-    a: geo.legs[0].tan(0)
-  };
-  const landed = t > geo.legs[3].e;
-  const STOPS = ['LDS', 'TPE', 'MEL', 'OSA'];
-  const arrive = STOPS.map((k, i) => t >= geo.legs[i].e);
-  const cam = easeIO(clamp01((t - INTRO_CAM) / (INTRO_END - INTRO_CAM)));
-  const stampSize = compact ? 66 : 96;
-  const stampOff = {
-    LDS: [.9, 1.1],
-    TPE: [-1.1, .3],
-    MEL: [1.1, -.2],
-    OSA: [1, -1.1]
-  };
-  const stampTxt = [['ARRIVAL', 'LEEDS', '2018'], ['ARRIVAL', 'TAIPEI', '2019'], ['ARRIVAL', 'MELBOURNE', '2024'], ['ARRIVAL', 'OSAKA', '2025']];
-  return React.createElement("div", {
-    className: "intro",
-    style: {
-      transform: 'translateY(' + -cam * 100 + '%)'
-    },
-    "aria-label": "Intro"
-  }, React.createElement("svg", {
-    viewBox: '0 0 ' + W + ' ' + H,
-    preserveAspectRatio: "xMidYMid slice",
-    className: "intro-map",
-    style: {
-      opacity: clamp01(t / .35)
-    }
-  }, React.createElement("path", {
-    d: landD,
-    fill: "var(--paper-2)",
-    stroke: "var(--ink-3)",
-    strokeWidth: "0.8",
-    strokeLinejoin: "round"
-  }), geo.legs.map((lg, li) => lg.dashes.map((d, i) => React.createElement("line", {
-    key: li + '-' + i,
-    x1: -3,
-    x2: 3,
-    y1: 0,
-    y2: 0,
-    transform: 'translate(' + d.p[0] + ',' + d.p[1] + ') rotate(' + d.a + ')',
-    stroke: "var(--ink-1)",
-    strokeWidth: "1.6",
-    strokeLinecap: "round",
-    style: {
-      opacity: easeIO(clamp01((t - lg.s) / (lg.e - lg.s))) >= d.u ? 1 : 0,
-      transition: 'opacity 120ms linear'
-    }
-  }))), Object.entries(geo.P).map(([k, p]) => React.createElement("g", {
-    key: k,
-    transform: 'translate(' + p[0] + ',' + p[1] + ')'
-  }, React.createElement("circle", {
-    r: "4",
-    fill: "var(--karashi-1)"
-  }), React.createElement("circle", {
-    r: "9",
-    fill: "none",
-    stroke: "var(--karashi-1)",
-    strokeWidth: "1",
-    opacity: ".6"
-  })))), STOPS.map((k, i) => {
-    const p = geo.P[k];
-    const o = stampOff[k];
-    return React.createElement("div", {
-      key: k,
-      className: "intro-stamp",
-      style: {
-        left: p[0] / W * 100 + '%',
-        top: p[1] / H * 100 + '%',
-        transform: 'translate(' + (o[0] * stampSize * .7 - stampSize / 2) + 'px,' + (o[1] * stampSize * .8 - stampSize / 2) + 'px)'
-      }
-    }, React.createElement(window.NS.Stamp, {
-      top: stampTxt[i][0],
-      main: stampTxt[i][1],
-      bottom: stampTxt[i][2],
-      size: stampSize,
-      color: ['var(--matcha-1)', 'var(--ink-2)', 'var(--karashi-1)', 'var(--shu-1)'][i],
-      rotate: [-10, 7, -6, -5][i],
-      inked: arrive[i]
-    }));
-  }), plane && React.createElement("div", {
-    className: "intro-plane",
-    style: {
-      left: plane.p[0] / W * 100 + '%',
-      top: plane.p[1] / H * 100 + '%',
-      transform: 'translate(-50%,-50%) rotate(' + (plane.a + 45) + 'deg) scale(' + (landed ? .6 : 1) + ')',
-      opacity: landed ? 0 : 1
-    }
-  }, React.createElement(Icon, {
-    name: "plane",
-    size: compact ? 22 : 28,
-    color: "var(--ink-1)"
-  })), React.createElement("ol", {
-    className: "intro-lines"
-  }, L.intro.map(([a, b], i) => React.createElement("li", {
-    key: i,
-    style: {
-      opacity: arrive[i] ? 1 : 0,
-      transform: arrive[i] ? 'none' : 'translateY(8px)'
-    }
-  }, React.createElement("b", null, a), React.createElement("span", null, "\uFF5C"), b))), React.createElement("button", {
-    className: "intro-skip",
-    onClick: finish
-  }, L.skip, React.createElement(Icon, {
-    name: "skip-forward",
-    size: 16
-  })));
-}
-window.Intro = Intro;
 /* Street.jsx */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const STARS = Array.from({
@@ -1286,8 +1187,10 @@ function Street({
   const compact = useCompact();
   const touch = useTouch();
   const reduced = useReduced();
-  const [mode, setMode] = useState('dusk');
+  const [modeS, setMode] = useState('dusk');
   const [picked, setPicked] = useState(null);
+  const [slide, setSlide] = useState(0);
+  const mode = compact ? slide ? 'night' : 'day' : modeS;
   const [glint, setGlint] = useState(false);
   const [zoom, setZoom] = useState(null);
   const lay = compact ? {
@@ -1319,7 +1222,7 @@ function Street({
     }
   }, [mode]);
   useEffect(() => {
-    if (!touch || picked || reduced) return;
+    if (!touch || picked || reduced || compact) return;
     const seq = ['day', 'dusk', 'night', 'dusk'];
     let i = 0;
     const id = setInterval(() => {
@@ -1327,7 +1230,7 @@ function Street({
       i++;
     }, 3200);
     return () => clearInterval(id);
-  }, [touch, picked, reduced]);
+  }, [touch, picked, reduced, compact]);
   const enter = which => {
     const vbx = compact ? -40 : 0,
       vbw = compact ? 1020 : 1440;
@@ -1335,7 +1238,7 @@ function Street({
     setZoom(compact ? {
       which,
       ox: '50%',
-      oy: which === 'ex' ? '50%' : '86%'
+      oy: '62%'
     } : {
       which,
       ox: (ox - vbx) / vbw * 100 + '%'
@@ -1344,6 +1247,11 @@ function Street({
   };
   const handlers = which => {
     const m = which === 'ex' ? 'day' : 'night';
+    if (compact) return {
+      onEnter: () => {},
+      onLeave: () => {},
+      onTap: () => enter(which)
+    };
     return touch ? {
       onEnter: () => {},
       onLeave: () => {},
@@ -1384,13 +1292,18 @@ function Street({
       opacity: mode === 'night' ? 1 : 0
     }
   }, L.tagline)), compact ? React.createElement("p", {
-    className: "byline is-2l"
-  }, L.byline.split('｜').slice(1).map((t, n) => React.createElement("span", {
-    key: n
+    className: "byline is-3l"
+  }, L.byline.split('｜').map((t, n) => React.createElement("span", {
+    key: n,
+    className: n ? '' : 'nk'
   }, t))) : React.createElement("p", {
     className: "byline"
-  }, L.byline)), compact ? React.createElement("div", {
-    className: "street-stack"
+  }, L.byline)), compact ? React.createElement(SwipeDeck, {
+    index: slide,
+    onChange: setSlide,
+    dark: slide === 1,
+    labels: [L.exSign.join(' '), L.thSign.join(' ')],
+    className: "street-deck"
   }, React.createElement("svg", {
     className: "street-svg is-stack",
     viewBox: "-50 70 620 470",
@@ -1537,7 +1450,7 @@ function Street({
     }
   })), React.createElement("span", {
     className: "hint-text"
-  }, touch ? L.hintTap : L.hintHover))), React.createElement("div", {
+  }, compact ? L.hintSwipe : touch ? L.hintTap : L.hintHover))), React.createElement("div", {
     className: 'enter-veil ' + (zoom ? 'on ' + zoom.which : '')
   }));
 }
@@ -1560,12 +1473,27 @@ function ConsultDesk({
   const [open, setOpen] = useState(reduced);
   const [cur, setCur] = useState(lang === 'ja' ? 'JPY' : 'TWD');
   const [sway, setSway] = useState(0);
+  const bodyRef = useRef(null);
+  const [bh, setBh] = useState(0);
   useEffect(() => {
-    if (touch && seen) {
+    if (!compact || !open || !bodyRef.current) return;
+    const el = bodyRef.current;
+    const m = () => setBh(el.scrollHeight);
+    m();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null;
+    ro && ro.observe(el.firstChild);
+    return () => ro && ro.disconnect();
+  }, [compact, open]);
+  const openM = () => {
+    setOpen(true);
+    setTimeout(() => scrollToId('consult-services', !reduced), reduced ? 30 : 330);
+  };
+  useEffect(() => {
+    if (touch && seen && !compact) {
       const id = setTimeout(() => setOpen(true), 700);
       return () => clearTimeout(id);
     }
-  }, [touch, seen]);
+  }, [touch, seen, compact]);
   useEffect(() => {
     if (reduced) return;
     let raf = 0;
@@ -1578,10 +1506,143 @@ function ConsultDesk({
   const th = tone === 'theatre';
   const services = th ? L.thServices : L.exServices;
   const price = s => s[2] == null ? L.quote : cur === 'TWD' ? 'NT$ ___' : '¥ ___';
+  if (compact) return React.createElement("section", {
+    ref: ref,
+    id: "consult",
+    className: 'desk desk-m ' + (th ? 'desk-th' : 'desk-ex') + (open ? ' is-open' : ''),
+    "data-screen-label": th ? 'Theatre consult (box office)' : 'Exhibition consult (reception)'
+  }, React.createElement("div", {
+    className: "desk-head wrap"
+  }, React.createElement("span", {
+    className: "desk-plate"
+  }, React.createElement("b", null, th ? L.deskTh : L.deskEx), React.createElement("small", null, th ? L.deskThSub : L.deskExSub))), React.createElement("div", {
+    className: "desk-window wrap"
+  }, React.createElement("div", {
+    className: "desk-panel"
+  }, React.createElement("div", {
+    className: "desk-m-noren",
+    "aria-hidden": open ? 'true' : undefined
+  }, React.createElement(NS.Noren, {
+    label: th ? '劇場相談室' : '展覽相談室',
+    tone: tone,
+    open: open,
+    onOpen: openM,
+    height: 130,
+    sway: !reduced
+  })), React.createElement("div", {
+    className: "desk-m-intro"
+  }, React.createElement("h3", {
+    className: "desk-m-title"
+  }, th ? L.thQ : L.exQ), React.createElement("p", {
+    className: "desk-m-desc"
+  }, (th ? L.roomTh : L.roomEx).split('\n')[0]), React.createElement("p", {
+    className: "desk-m-free"
+  }, L.csNote.split('｜')[0]), !open && React.createElement("button", {
+    className: 'desk-m-open ' + (th ? 'is-th' : 'is-ex'),
+    onClick: openM,
+    "aria-expanded": "false",
+    "aria-controls": "consult-body"
+  }, L.openDesk, React.createElement(Icon, {
+    name: "arrow-down",
+    size: 16
+  }))), React.createElement("div", {
+    id: "consult-body",
+    ref: bodyRef,
+    className: "desk-m-body",
+    style: {
+      height: open ? bh || 'auto' : 0,
+      transition: reduced ? 'none' : undefined
+    }
+  }, open && React.createElement("div", {
+    className: "desk-m-inner"
+  }, React.createElement("div", {
+    className: "desk-row-head",
+    id: "consult-services"
+  }, React.createElement(NS.SectionHeading, {
+    eyebrow: "Services",
+    title: L.services,
+    size: "h3"
+  }), React.createElement(NS.CurrencyToggle, {
+    value: cur,
+    onChange: setCur,
+    tone: tone
+  })), React.createElement("div", {
+    className: "price-scroll"
+  }, services.map((s, i) => React.createElement(NS.PriceCard, {
+    key: i,
+    index: i + 1,
+    title: s[0],
+    desc: s[1],
+    price: price(s),
+    unit: s[2] || undefined,
+    tone: tone,
+    visible: true,
+    style: {
+      minHeight: 0,
+      padding: '20px 16px 16px',
+      gap: 8,
+      flex: '0 0 64%',
+      scrollSnapAlign: 'start'
+    }
+  }))), React.createElement("p", {
+    className: "note"
+  }, L.priceNote), React.createElement("div", {
+    className: "desk-block"
+  }, React.createElement(NS.SectionHeading, {
+    eyebrow: "Process",
+    title: L.process,
+    size: "h3"
+  }), React.createElement(NS.ProcessSteps, {
+    tone: tone,
+    direction: "vertical",
+    steps: L.steps.map(label => ({
+      label
+    }))
+  })), React.createElement("div", {
+    className: "desk-block contact"
+  }, React.createElement(NS.SectionHeading, {
+    eyebrow: "Contact",
+    title: L.contact,
+    size: "h3"
+  }), React.createElement(NS.Button, {
+    tone: tone,
+    size: "lg",
+    href: "#",
+    icon: React.createElement(Icon, {
+      name: "calendar-check",
+      size: 18
+    })
+  }, L.book), React.createElement(NS.ContactForm, {
+    tone: tone,
+    labels: L.form,
+    defaultType: th ? 1 : 0
+  }), React.createElement("div", {
+    className: "contact-links"
+  }, React.createElement("a", {
+    href: "#",
+    "aria-label": "Email"
+  }, React.createElement(Icon, {
+    name: "mail",
+    size: 20
+  }), React.createElement("span", null, "Email")), React.createElement("a", {
+    href: "#",
+    "aria-label": "LINE"
+  }, React.createElement(Icon, {
+    name: "message-circle",
+    size: 20
+  }), React.createElement("span", null, "LINE")), React.createElement("a", {
+    href: "#",
+    "aria-label": "Instagram"
+  }, React.createElement(Icon, {
+    name: "instagram",
+    size: 20
+  }), React.createElement("span", null, "Instagram"))), React.createElement("p", {
+    className: "note"
+  }, L.reply)))))));
   return React.createElement("section", {
     ref: ref,
     id: "consult",
-    className: 'desk ' + (th ? 'desk-th' : 'desk-ex'),
+    className: 'desk desk-d ' + (th ? 'desk-th' : 'desk-ex') + (open ? ' is-open' : ''),
     "data-screen-label": th ? 'Theatre consult (box office)' : 'Exhibition consult (reception)'
   }, React.createElement("div", {
     className: "desk-head wrap"
@@ -1598,12 +1659,12 @@ function ConsultDesk({
     },
     onMouseEnter: () => !touch && setOpen(true)
   }, React.createElement(NS.Noren, {
-    label: L.consult === 'Consult' ? '相談' : L.consult,
+    label: th ? '劇場相談室' : '展覽相談室',
     tone: tone,
     sub: L.norenSub,
     open: open,
     onOpen: () => setOpen(true),
-    height: compact ? 200 : 280,
+    height: compact ? 100 : 140,
     sway: !reduced
   })), React.createElement("div", {
     className: "desk-content",
@@ -1698,11 +1759,6 @@ function Home({
   const NS = window.NS;
   const compact = useCompact();
   const reduced = useReduced();
-  const [intro, setIntro] = useState(() => !reduced && !sessionStorage.getItem('nh-intro-seen'));
-  const done = () => {
-    sessionStorage.setItem('nh-intro-seen', '1');
-    setIntro(false);
-  };
   const [alt, setAlt] = useState(false);
   const [vf, setVf] = useState('all');
   const [order] = useState(() => {
@@ -1713,19 +1769,9 @@ function Home({
     }
     return a;
   });
-  const replay = () => {
-    window.scrollTo({
-      top: 0
-    });
-    setIntro(true);
-  };
   return React.createElement("main", {
     className: "home"
-  }, intro && React.createElement(Intro, {
-    lang: lang,
-    compact: compact,
-    onDone: done
-  }), React.createElement(Street, {
+  }, React.createElement(Street, {
     lang: lang,
     onEnterPage: p => go(p)
   }), React.createElement("section", {
@@ -1770,18 +1816,15 @@ function Home({
   }), L.cv)), L.about.map((p, n) => React.createElement("p", {
     key: n,
     className: "about-lead"
-  }, p))), React.createElement("div", {
-    className: "about-route"
-  }, React.createElement("ol", null, window.ROUTE.map(([y, c], n) => React.createElement("li", {
-    key: y
-  }, React.createElement("b", null, y), React.createElement("span", null, c)))), React.createElement(NS.Button, {
-    variant: "ghost",
-    onClick: replay,
-    icon: React.createElement(Icon, {
-      name: "rotate-ccw",
-      size: 16
-    })
-  }, L.replay))), React.createElement("section", {
+  }, p)), React.createElement("p", {
+    className: "about-cities",
+    "aria-label": "Leeds, Taipei, Melbourne, Osaka"
+  }, ['Leeds', 'Taipei', 'Melbourne', 'Osaka'].map((c, n) => React.createElement(React.Fragment, {
+    key: c
+  }, n > 0 && React.createElement("span", {
+    className: "ac-arrow",
+    "aria-hidden": "true"
+  }, "\u2192"), React.createElement("span", null, c)))))), React.createElement("section", {
     className: "partners",
     id: "partners",
     "data-screen-label": "Home partners"
@@ -1844,7 +1887,10 @@ function Home({
   })), React.createElement("button", {
     className: "voices-cta",
     onClick: () => scrollToId('home-consult')
-  }, React.createElement("span", null, L.teammate), React.createElement(Icon, {
+  }, React.createElement("span", null, L.teammate.split('\n').map((t, n) => React.createElement("span", {
+    key: n,
+    className: "tm-line"
+  }, t))), React.createElement(Icon, {
     name: "arrow-down",
     size: 26
   })))), React.createElement(ConsultStreet, {
@@ -1884,7 +1930,9 @@ function ConsultStreet({
   const L = window.COPY[lang];
   const NS = window.NS;
   const touch = useTouch();
+  const compact = useCompact();
   const [open, setOpen] = useState(null);
+  const [slide, setSlide] = useState(0);
   const doors = [{
     k: 'ex',
     noren: '展覽相談',
@@ -1904,23 +1952,9 @@ function ConsultStreet({
     cta: L.ctaTh,
     sv: L.thServices
   }];
-  return React.createElement("section", {
-    className: "cs",
-    id: "home-consult",
-    "data-screen-label": "Home consult doors"
-  }, React.createElement("p", {
-    className: "cs-note"
-  }, L.csNote.split('｜').map((t, n) => React.createElement(React.Fragment, {
-    key: n
-  }, n > 0 && React.createElement("span", {
-    className: "cs-sep"
-  }, "\uFF5C"), React.createElement("span", {
-    className: "cs-nw"
-  }, t)))), React.createElement("div", {
-    className: "cs-street"
-  }, doors.map(d => {
-    const st = open === d.k ? 'open' : touch ? 'half' : 'closed';
-    const on = st !== 'closed';
+  const door = d => {
+    const st = compact ? 'closed' : open === d.k ? 'open' : touch ? 'half' : 'closed';
+    const on = compact || st !== 'closed';
     return React.createElement("div", {
       key: d.k,
       className: 'cs-bldg cs-' + d.k + (on ? ' is-on' : ''),
@@ -1974,7 +2008,44 @@ function ConsultStreet({
       className: "cs-poster",
       "aria-hidden": "true"
     }, React.createElement("b", null, L.poster), React.createElement("i", null), React.createElement("small", null, "\u306D\u306D\u30CD\u30B3")));
-  })), React.createElement("div", {
+  };
+  return React.createElement("section", {
+    className: "cs",
+    id: "home-consult",
+    "data-screen-label": "Home consult doors"
+  }, React.createElement("p", {
+    className: "cs-note"
+  }, L.csNote.split('｜').map((t, n) => React.createElement(React.Fragment, {
+    key: n
+  }, n > 0 && React.createElement("span", {
+    className: "cs-sep"
+  }, "\uFF5C"), React.createElement("span", {
+    className: "cs-nw"
+  }, t)))), compact && React.createElement("div", {
+    className: "cs-sky",
+    "aria-hidden": "true"
+  }, React.createElement("i", {
+    className: "d",
+    style: {
+      opacity: slide ? 0 : 1
+    }
+  }), React.createElement("i", {
+    className: "n",
+    style: {
+      opacity: slide ? 1 : 0
+    }
+  })), compact ? React.createElement(SwipeDeck, {
+    index: slide,
+    onChange: i => {
+      setSlide(i);
+      setOpen(null);
+    },
+    dark: slide === 1,
+    labels: [L.ctaEx, L.ctaTh],
+    className: "cs-deck"
+  }, doors.map(door)) : React.createElement("div", {
+    className: "cs-street"
+  }, doors.map(door)), React.createElement("div", {
     className: "cs-ground",
     "aria-hidden": "true"
   }));
@@ -2144,7 +2215,9 @@ function ExWall({
     style: {
       transform: b
     }
-  }, React.createElement("p", {
+  }, React.createElement("span", {
+    className: "ex-kicker"
+  }, "NENEKO'S PROFILE"), React.createElement("p", {
     className: "ex-statement"
   }, L.exStatement), React.createElement("p", {
     className: "ex-period"
@@ -2210,6 +2283,57 @@ function Room({
     className: "room-dark",
     style: {
       opacity: (1 - light) * .55
+    }
+  }));
+}
+function RoomM({
+  r,
+  i,
+  lang,
+  onOpen
+}) {
+  const L = window.COPY[lang];
+  const NS = window.NS;
+  const ref = useRef(null);
+  const v = useInView(ref, {
+    threshold: .2,
+    once: true
+  });
+  return React.createElement("article", {
+    ref: ref,
+    className: 'room-m' + (v ? ' is-in' : ''),
+    id: 'room-' + r.id,
+    "data-screen-label": '展間 ' + r.n
+  }, React.createElement("div", {
+    className: "room-sky",
+    "aria-hidden": "true"
+  }), React.createElement("div", {
+    className: "room-num"
+  }, React.createElement("span", null, L.room), React.createElement("b", null, r.n)), React.createElement("button", {
+    className: "room-photo",
+    onClick: () => onOpen(i),
+    "aria-label": L.viewDetail + ' ' + r.title
+  }, React.createElement(NS.PhotoFrame, {
+    ratio: "3 / 2",
+    label: '展間 ' + r.n + ' · 主視覺 · 待替換'
+  }), React.createElement("span", {
+    className: "room-photo-cta"
+  }, L.viewDetail, React.createElement(Icon, {
+    name: "plus",
+    size: 14
+  }))), React.createElement(NS.Plaque, {
+    number: L.room + ' ' + r.n,
+    year: r.year,
+    title: r.title,
+    client: r.client[lang],
+    role: r.role[lang],
+    note: L.placeholder,
+    labels: {
+      client: L.client,
+      role: L.role
+    },
+    style: {
+      maxWidth: 'none'
     }
   }));
 }
@@ -2288,6 +2412,17 @@ function Exhibition({
   const vertical = compact || reduced;
   const gRef = useRef(null);
   const p = useProgress(gRef);
+  const scrolling = useScrolling();
+  const [inDesk, setInDesk] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById('consult');
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInDesk(e.isIntersecting), {
+      threshold: 0
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const [vw, setVw] = useState(window.innerWidth);
   const [cur, setCur] = useState('r01');
   const [visited, setVisited] = useState([]);
@@ -2339,12 +2474,32 @@ function Exhibition({
     });
   };
   return React.createElement("main", {
-    className: "exhibition"
-  }, React.createElement(ExWall, {
+    className: 'exhibition' + (compact ? ' ex-m' : '')
+  }, compact ? React.createElement("section", {
+    className: "ex-intro",
+    "data-screen-label": "Exhibition title wall"
+  }, React.createElement("h1", {
+    className: 'ex-title' + (lang !== 'en' ? ' tategaki' : '')
+  }, L.exWall), React.createElement("span", {
+    className: "ex-kicker"
+  }, "NENEKO'S PROFILE"), React.createElement("p", {
+    className: "ex-statement"
+  }, L.exStatement), React.createElement("p", {
+    className: "ex-period"
+  }, L.exPeriod)) : React.createElement(ExWall, {
     lang: lang,
     compact: compact,
     reduced: reduced
-  }), vertical ? React.createElement("section", {
+  }), compact ? React.createElement("section", {
+    className: "gallery-m",
+    "data-screen-label": "Exhibition gallery"
+  }, rooms.map((r, i) => React.createElement(RoomM, {
+    key: r.id,
+    r: r,
+    i: i,
+    lang: lang,
+    onOpen: setDetail
+  }))) : vertical ? React.createElement("section", {
     className: "gallery-v",
     "data-screen-label": "Exhibition gallery"
   }, rooms.map((r, i) => React.createElement(Room, {
@@ -2402,7 +2557,7 @@ function Exhibition({
     tone: "exhibit",
     lang: lang
   }), React.createElement("div", {
-    className: 'floormap-dock' + (narrow ? ' is-compact' : '')
+    className: 'floormap-dock' + (narrow ? ' is-compact' : '') + (compact && (scrolling || inDesk) ? ' is-hidden' : '')
   }, React.createElement(NS.FloorMap, {
     rooms: rooms.map(r => ({
       id: r.id,
@@ -2426,87 +2581,262 @@ function Exhibition({
 }
 window.Exhibition = Exhibition;
 /* Theatre.jsx */
-function Sticky({
-  h,
-  className,
-  label,
-  id,
-  children,
-  reduced,
-  onProgress
-}) {
-  const ref = useRef(null);
-  const p = useProgress(ref);
-  useEffect(() => {
-    onProgress && onProgress(p);
-  }, [p]);
-  return React.createElement("section", {
-    ref: ref,
-    id: id,
-    className: 'sticky-wrap ' + (className || '') + (reduced ? ' is-static' : ''),
-    style: {
-      height: reduced ? 'auto' : h
-    },
-    "data-screen-label": label
-  }, React.createElement("div", {
-    className: "sticky-inner"
-  }, children(reduced ? 1 : p)));
-}
-function Act({
-  a,
+function TicketM({
   lang,
-  compact,
-  reduced,
-  onActive
+  reduced
 }) {
   const L = window.COPY[lang];
   const NS = window.NS;
-  return React.createElement(Sticky, {
-    h: compact ? '150vh' : '190vh',
-    className: "act",
-    id: 'act-' + a.id,
-    label: a.n.zh,
-    reduced: reduced,
-    onProgress: p => {
-      if (p > .18 && p < .82) onActive(a.id);
+  const [torn, setTorn] = useState(0);
+  const done = useRef(false);
+  const fmt = () => {
+    const d = new Date(),
+      z = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate()) + ' — ' + z(d.getHours()) + ':' + z(d.getMinutes());
+  };
+  const [now, setNow] = useState(fmt);
+  useEffect(() => {
+    const id = setInterval(() => setNow(fmt()), 15000);
+    return () => clearInterval(id);
+  }, []);
+  const [drape, setDrape] = useState(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) return;
+    const id = setTimeout(() => setDrape(1), 350);
+    return () => clearTimeout(id);
+  }, []);
+  const tear = () => {
+    if (done.current) return;
+    done.current = true;
+    if (reduced) {
+      setTorn(1);
+      return;
     }
-  }, p => {
-    const lit = reduced ? 1 : p < .18 ? p / .18 : p > .82 ? (1 - p) / .18 : 1;
-    return React.createElement("div", {
-      className: "stage",
-      style: {
-        opacity: clamp01(lit)
+    const t0 = performance.now();
+    const from = torn;
+    const step = n => {
+      const k = clamp01((n - t0) / 600);
+      setTorn(from + (1 - from) * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  useEffect(() => {
+    const f = () => {
+      if (done.current) return;
+      const k = clamp01(window.scrollY / (window.innerHeight * .4));
+      if (reduced) {
+        if (k > .05) {
+          done.current = true;
+          setTorn(1);
+        }
+        return;
       }
-    }, React.createElement("div", {
-      className: "spot",
-      style: {
-        transform: 'scaleY(' + (.6 + clamp01(lit) * .4) + ')'
-      }
-    }), React.createElement("span", {
-      className: "act-num"
-    }, a.n[lang]), React.createElement("div", {
-      className: "stage-photo"
-    }, React.createElement(NS.PhotoFrame, {
-      tone: "night",
-      shape: "square",
-      ratio: "16 / 9",
-      label: a.n.zh + ' · 舞台照 · 待替換',
-      style: {
-        borderRadius: 'var(--radius-sm)'
-      }
-    })), React.createElement(NS.Playbill, {
-      act: a.n[lang],
-      year: a.year,
-      title: a.title,
-      rows: [{
-        k: L.team,
-        v: a.team[lang]
-      }, {
-        k: L.role,
-        v: a.role[lang]
-      }]
-    }));
+      setTorn(k);
+      if (k >= 1) done.current = true;
+    };
+    f();
+    window.addEventListener('scroll', f, {
+      passive: true
+    });
+    return () => window.removeEventListener('scroll', f);
+  }, []);
+  return React.createElement("section", {
+    className: "ticket-m",
+    "data-screen-label": "Theatre ticket"
+  }, React.createElement("div", {
+    className: "th-valance",
+    "aria-hidden": "true"
+  }), React.createElement(NS.Curtain, {
+    open: drape,
+    valance: false,
+    duration: reduced ? undefined : 1400,
+    style: {
+      top: 22
+    }
+  }), React.createElement("button", {
+    className: "ticket-btn",
+    onClick: tear,
+    "aria-label": L.tearHintM
+  }, React.createElement(NS.Ticket, {
+    title: L.thTicket,
+    sub: L.ticketSub,
+    date: now,
+    seat: "\u4E00\u968E \u308D\u5217 7\u756A",
+    no: "No. 000127",
+    admit: L.admit,
+    stubLabel: L.stub,
+    torn: torn
+  })), React.createElement("p", {
+    className: "th-hint",
+    style: {
+      opacity: torn > 0 ? 0 : 1
+    }
+  }, React.createElement(Icon, {
+    name: "arrow-down",
+    size: 16
+  }), L.tearHintM));
+}
+function ActM({
+  a,
+  i,
+  lang,
+  onOpen
+}) {
+  const L = window.COPY[lang];
+  const NS = window.NS;
+  return React.createElement(Reveal, {
+    as: "article",
+    className: "act-m",
+    id: 'act-' + a.id,
+    "data-screen-label": a.n.zh
+  }, React.createElement("span", {
+    className: "act-num"
+  }, a.n[lang]), React.createElement("div", {
+    className: "act-photo-m"
+  }, React.createElement("button", {
+    className: "room-photo act-photo-btn",
+    onClick: () => onOpen(i),
+    "aria-label": L.viewDetail + ' ' + a.title
+  }, React.createElement(NS.PhotoFrame, {
+    tone: "night",
+    shape: "square",
+    ratio: "16 / 9",
+    label: a.n.zh + ' · 舞台照 · 待替換',
+    style: {
+      borderRadius: 'var(--radius-sm)'
+    }
+  }), React.createElement("span", {
+    className: "room-photo-cta is-th"
+  }, L.viewDetail, React.createElement(Icon, {
+    name: "plus",
+    size: 14
+  })))), React.createElement(NS.Playbill, {
+    year: a.year,
+    title: a.title,
+    rows: [{
+      k: L.team,
+      v: a.team[lang]
+    }, {
+      k: L.role,
+      v: a.role[lang]
+    }]
+  }));
+}
+function ActDetail({
+  a,
+  next,
+  lang,
+  onClose,
+  onNext
+}) {
+  const L = window.COPY[lang];
+  const NS = window.NS;
+  const T = L.thd;
+  const [on, setOn] = useState(false);
+  const box = useRef(null);
+  useEffect(() => {
+    const t0 = setTimeout(() => setOn(true), 20);
+    const k = e => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', k);
+      document.body.style.overflow = '';
+      clearTimeout(t0);
+    };
+  }, []);
+  useEffect(() => {
+    if (box.current) box.current.scrollTop = 0;
+  }, [a.id]);
+  const cols = [[T.origin, T.photoOrigin], [T.production, T.photoProd], [T.performance, T.photoPerf]];
+  return React.createElement("div", {
+    ref: box,
+    className: "detail detail-th",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": a.title,
+    style: {
+      opacity: on ? 1 : 0
+    }
+  }, React.createElement("div", {
+    className: "detail-body wrap"
+  }, React.createElement("button", {
+    className: "detail-close",
+    onClick: onClose
+  }, React.createElement(Icon, {
+    name: "arrow-left",
+    size: 18
+  }), T.back), React.createElement("span", {
+    className: "detail-num"
+  }, a.n[lang], "\u30FB", a.year), React.createElement("h2", null, a.title), React.createElement("p", {
+    className: "detail-meta"
+  }, L.team, "\uFF1A", a.team[lang], "\u3000", T.venue, "\uFF1A", T.tbc, "\u3000", L.role, "\uFF1A", a.role[lang]), React.createElement("div", {
+    className: "detail-hero"
+  }, React.createElement(NS.PhotoFrame, {
+    tone: "night",
+    ratio: "16 / 9",
+    shape: "square",
+    label: a.n.zh + ' · 主視覺 · 待替換',
+    style: {
+      borderRadius: 'var(--radius-sm)'
+    }
+  })), React.createElement("div", {
+    className: "detail-cols"
+  }, cols.map(([h, ph]) => React.createElement("div", {
+    key: h,
+    className: "thd-col"
+  }, React.createElement("h3", null, h), React.createElement("p", null, L.placeholder), React.createElement(NS.PhotoFrame, {
+    tone: "night",
+    ratio: "4 / 3",
+    label: ph + ' · 待替換'
+  })))), React.createElement("section", {
+    className: "thd-cast",
+    "aria-label": T.cast
+  }, React.createElement("h3", null, T.cast), React.createElement("dl", null, T.castRoles.map((r, n) => React.createElement("div", {
+    key: n
+  }, React.createElement("dt", null, r), React.createElement("span", {
+    "aria-hidden": "true"
+  }), React.createElement("dd", null, n === 0 ? 'NENEKO' : T.tbc))))), React.createElement("button", {
+    className: "thd-next",
+    onClick: onNext
+  }, React.createElement("span", null, React.createElement("small", null, T.next), next.n[lang], "\u3000", next.title), React.createElement(Icon, {
+    name: "arrow-right",
+    size: 18
+  }))));
+}
+function BowM({
+  lang
+}) {
+  const L = window.COPY[lang];
+  const NS = window.NS;
+  const reduced = useReduced();
+  const ref = useRef(null);
+  const v = useInView(ref, {
+    threshold: .45,
+    once: true
   });
+  return React.createElement("section", {
+    ref: ref,
+    className: 'bow-m bow-rise' + (v ? ' is-up' : ''),
+    id: "bow",
+    "data-screen-label": "Theatre curtain call"
+  }, React.createElement("div", {
+    className: "bow-stage"
+  }, React.createElement("span", {
+    className: "bow-label"
+  }, L.curtainCall), React.createElement("h2", null, L.bowTitle), React.createElement("p", null, L.bowSub)), React.createElement(NS.Curtain, {
+    open: reduced ? 0 : v ? 0 : 1,
+    valance: false,
+    duration: reduced ? undefined : 1400,
+    style: {
+      top: 22,
+      zIndex: 1
+    }
+  }), React.createElement("div", {
+    className: "th-valance bow-valance",
+    "aria-hidden": "true"
+  }));
 }
 function Theatre({
   lang
@@ -2518,7 +2848,27 @@ function Theatre({
   const narrow = useMedia('(max-width: 1099px)');
   const reduced = useReduced();
   const [cur, setCur] = useState(null);
-  const onActive = useCallback(id => setCur(c => c === id ? c : id), []);
+  const [detail, setDetail] = useState(null);
+  const scrolling = useScrolling();
+  const [inDesk, setInDesk] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById('consult');
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInDesk(e.isIntersecting), {
+      threshold: 0
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) setCur(e.target.id === 'bow' ? 'bow' : e.target.id.replace('act-', ''));
+    }), {
+      threshold: .5
+    });
+    document.querySelectorAll('.act-m, #bow').forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, []);
   const navActs = [...acts.map(a => ({
     id: a.id,
     label: a.n[lang],
@@ -2528,112 +2878,41 @@ function Theatre({
     label: L.curtainCall,
     title: '20% 實驗劇坊'
   }];
-  const jump = id => {
-    const el = document.getElementById(id === 'bow' ? 'bow' : 'act-' + id);
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    const span = el.offsetHeight - window.innerHeight;
-    window.scrollTo({
-      top: top + (id === 'bow' ? span * .7 : span * .45),
-      behavior: reduced ? 'auto' : 'smooth'
-    });
-  };
+  const jump = id => scrollToId(id === 'bow' ? 'bow' : 'act-' + id);
   return React.createElement("main", {
-    className: "theatre"
-  }, React.createElement(Sticky, {
-    h: compact ? '150vh' : '180vh',
-    className: "th-ticket",
-    label: "Theatre ticket",
+    className: "theatre th-m"
+  }, React.createElement(TicketM, {
+    lang: lang,
     reduced: reduced
-  }, p => React.createElement("div", {
-    className: "ticket-stage"
-  }, React.createElement(NS.Ticket, {
-    title: 'NENEKO / HANNING ' + L.thSign[0],
-    sub: L.ticketSub,
-    date: "2026.11.07 \u2014 19:30",
-    seat: "\u4E00\u968E \u308D\u5217 7\u756A",
-    no: "No. 000127",
-    admit: L.admit,
-    stubLabel: L.stub,
-    torn: reduced ? 0 : clamp01((p - .15) / .55)
-  }), React.createElement("p", {
-    className: "th-hint",
-    style: {
-      opacity: 1 - p * 2
-    }
-  }, React.createElement(Icon, {
-    name: "arrow-down",
-    size: 16
-  }), L.tearHint))), React.createElement(Sticky, {
-    h: compact ? '160vh' : '220vh',
-    className: "th-overture",
-    label: "Theatre overture curtain",
-    reduced: reduced
-  }, p => React.createElement("div", {
-    className: "overture"
+  }), React.createElement("section", {
+    className: "acts-m",
+    "data-screen-label": "Theatre acts"
+  }, React.createElement(Reveal, {
+    className: "overture-beam",
+    "aria-hidden": "false"
   }, React.createElement("div", {
-    className: "spot",
-    style: {
-      opacity: clamp01(p * 1.4)
-    }
-  }), React.createElement("h1", {
-    className: "overture-title",
-    style: {
-      opacity: clamp01((p - .3) / .4),
-      transform: 'translateY(' + (1 - clamp01((p - .3) / .4)) * 20 + 'px)'
-    }
-  }, L.overture), React.createElement(NS.Curtain, {
-    open: reduced ? 1 : easeIO2(clamp01(p / .8))
-  }))), acts.map(a => React.createElement(Act, {
+    className: "beam",
+    "aria-hidden": "true"
+  }), React.createElement("p", {
+    className: "overture-m"
+  }, L.overture)), acts.map((a, i) => React.createElement(ActM, {
     key: a.id,
     a: a,
+    i: i,
     lang: lang,
-    compact: compact,
-    reduced: reduced,
-    onActive: onActive
-  })), React.createElement(Sticky, {
-    h: compact ? '200vh' : '280vh',
-    className: "th-bow",
-    id: "bow",
-    label: "Theatre curtain call",
-    reduced: reduced,
-    onProgress: p => {
-      if (p > .1 && p < .95) onActive('bow');
-    }
-  }, p => {
-    const o = reduced ? 1 : p < .35 ? 1 - p / .35 : p < .5 ? 0 : clamp01((p - .5) / .35);
-    const show = reduced || p > .5;
-    return React.createElement("div", {
-      className: "overture"
-    }, React.createElement("div", {
-      className: "spot wide",
-      style: {
-        opacity: show ? 1 : .3
-      }
-    }), React.createElement("div", {
-      className: "bow",
-      style: {
-        opacity: show ? 1 : 0,
-        transform: show ? 'none' : 'translateY(16px)'
-      }
-    }, React.createElement("span", {
-      className: "bow-label"
-    }, L.curtainCall), React.createElement("h2", null, L.bowTitle), React.createElement("p", null, L.bowSub)), React.createElement(NS.Curtain, {
-      open: o
-    }));
+    onOpen: setDetail
+  }))), React.createElement(BowM, {
+    lang: lang
   }), React.createElement("section", {
     className: "lobby wrap",
     "data-screen-label": "Theatre lobby"
   }, React.createElement("span", {
-    className: "lobby-lamp",
-    "aria-hidden": "true"
-  }), React.createElement("span", {
     className: "label"
   }, "Lobby"), React.createElement("h2", null, L.lobby)), React.createElement(ConsultDesk, {
     tone: "theatre",
     lang: lang
   }), React.createElement("div", {
-    className: 'program-dock' + (narrow ? ' is-compact' : '')
+    className: 'program-dock' + (narrow ? ' is-compact' : '') + (compact && (scrolling || inDesk) ? ' is-hidden' : '')
   }, React.createElement(NS.ProgramNav, {
     acts: navActs,
     current: cur,
@@ -2641,9 +2920,42 @@ function Theatre({
     title: L.program,
     collapsible: narrow,
     defaultOpen: !narrow
-  })));
+  })), detail != null && React.createElement(ActDetail, {
+    a: acts[detail],
+    next: acts[(detail + 1) % acts.length],
+    lang: lang,
+    onClose: () => setDetail(null),
+    onNext: () => setDetail((detail + 1) % acts.length)
+  }));
+}
+function ThHeader({
+  lang,
+  onLang,
+  onConsult,
+  onBrand,
+  light,
+  ex
+}) {
+  const L = window.COPY[lang];
+  const NS = window.NS;
+  return React.createElement("header", {
+    className: 'th-header' + (light ? ' is-light' : '') + (ex ? ' is-ex' : '')
+  }, React.createElement("button", {
+    className: "thh-brand",
+    onClick: onBrand
+  }, "NENEKO"), React.createElement("div", {
+    className: "thh-row"
+  }, React.createElement(NS.LangSwitch, {
+    value: lang,
+    onChange: onLang,
+    dark: !light && !ex
+  }), React.createElement("button", {
+    className: "thh-consult",
+    onClick: onConsult
+  }, L.consult)));
 }
 window.Theatre = Theatre;
+window.ThHeader = ThHeader;
 /* App.jsx */
 const pageUrl = (p, a) => './' + (p === 'home' ? 'index' : p) + '.html' + (a ? '#' + a : '');
 function App() {
