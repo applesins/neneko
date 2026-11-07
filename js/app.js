@@ -19,7 +19,8 @@ function useMedia(q) {
 }
 const useReduced = () => useMedia('(prefers-reduced-motion: reduce)');
 const useCompact = () => useMedia('(max-width: 767px)');
-const useTouch = () => useMedia('(hover: none)');
+const FORCE_TOUCH = /[?&]touch=1/.test(location.search);
+const useTouch = () => useMedia('(hover: none)') || FORCE_TOUCH;
 const clamp01 = v => Math.max(0, Math.min(1, v));
 function useProgress(ref) {
   const [p, setP] = useState(0);
@@ -454,7 +455,8 @@ function Museum({
   onEnter,
   onLeave,
   onTap,
-  glint
+  glint,
+  big
 }) {
   const L = window.COPY[lang];
   const night = mode === 'night',
@@ -892,7 +894,8 @@ function Museum({
     rot: 8,
     text: L.exTag,
     hidden: mode === 'night',
-    active: mode === 'day'
+    active: mode === 'day',
+    big: big
   }));
 }
 function TheatreBldg({
@@ -901,7 +904,8 @@ function TheatreBldg({
   lang,
   onEnter,
   onLeave,
-  onTap
+  onTap,
+  big
 }) {
   const L = window.COPY[lang];
   const night = mode === 'night';
@@ -1100,7 +1104,8 @@ function TheatreBldg({
     text: L.thTag,
     hidden: mode === 'day',
     light: mode === 'night',
-    active: mode === 'night'
+    active: mode === 'night',
+    big: big
   }));
 }
 function StreetTag({
@@ -1110,7 +1115,8 @@ function StreetTag({
   text,
   hidden,
   light,
-  active
+  active,
+  big
 }) {
   const tref = useRef(null);
   const [w, setW] = useState(Array.from(text).length * 18);
@@ -1122,7 +1128,7 @@ function StreetTag({
     };
     m();
     document.fonts && document.fonts.ready.then(m);
-  }, [text]);
+  }, [text, big]);
   return React.createElement("g", {
     transform: 'translate(' + x + ',' + y + ') rotate(' + rot + ')',
     "aria-hidden": "true",
@@ -1159,7 +1165,7 @@ function StreetTag({
     x: "0",
     y: "6",
     fontFamily: "var(--font-sans)",
-    fontSize: "16",
+    fontSize: big ? 24 : 16,
     fontWeight: "500",
     letterSpacing: "2.4",
     fill: light ? 'var(--night-ink)' : 'var(--ink-1)',
@@ -1326,7 +1332,11 @@ function Street({
     const vbx = compact ? -40 : 0,
       vbw = compact ? 1020 : 1440;
     const ox = which === 'ex' ? lay.mx + 178 : lay.tx + 210;
-    setZoom({
+    setZoom(compact ? {
+      which,
+      ox: '50%',
+      oy: which === 'ex' ? '50%' : '86%'
+    } : {
       which,
       ox: (ox - vbx) / vbw * 100 + '%'
     });
@@ -1359,7 +1369,7 @@ function Street({
     className: "street-inner",
     style: zoom ? {
       transform: 'scale(3.2)',
-      transformOrigin: zoom.ox + ' 78%'
+      transformOrigin: zoom.ox + ' ' + (zoom.oy || '78%')
     } : null
   }, React.createElement("div", {
     className: "street-top"
@@ -1373,9 +1383,96 @@ function Street({
     style: {
       opacity: mode === 'night' ? 1 : 0
     }
-  }, L.tagline)), React.createElement("p", {
+  }, L.tagline)), compact ? React.createElement("p", {
+    className: "byline is-2l"
+  }, L.byline.split('｜').slice(1).map((t, n) => React.createElement("span", {
+    key: n
+  }, t))) : React.createElement("p", {
     className: "byline"
-  }, L.byline)), React.createElement("svg", {
+  }, L.byline)), compact ? React.createElement("div", {
+    className: "street-stack"
+  }, React.createElement("svg", {
+    className: "street-svg is-stack",
+    viewBox: "-50 70 620 470",
+    preserveAspectRatio: "xMidYMax meet"
+  }, React.createElement("rect", {
+    x: "-60",
+    y: "500",
+    width: "640",
+    height: "80",
+    fill: "var(--paper-1)"
+  }), React.createElement("rect", {
+    x: "-60",
+    y: "500",
+    width: "640",
+    height: "80",
+    fill: "var(--night-3)",
+    style: {
+      opacity: mode === 'night' ? .5 : 0,
+      transition: 'opacity var(--dur-sky)'
+    }
+  }), React.createElement("line", {
+    x1: "-60",
+    y1: "500",
+    x2: "580",
+    y2: "500",
+    stroke: "var(--ink-1)",
+    strokeWidth: "1.5"
+  }), React.createElement("line", {
+    x1: "-60",
+    y1: "524",
+    x2: "580",
+    y2: "524",
+    stroke: "var(--ink-3)",
+    strokeWidth: "1",
+    strokeDasharray: "10 8"
+  }), React.createElement(Museum, _extends({
+    x: 0,
+    mode: mode,
+    lang: lang,
+    glint: glint,
+    big: true
+  }, handlers('ex')))), React.createElement("svg", {
+    className: "street-svg is-stack",
+    viewBox: "-90 70 600 470",
+    preserveAspectRatio: "xMidYMax meet"
+  }, React.createElement("rect", {
+    x: "-100",
+    y: "500",
+    width: "620",
+    height: "80",
+    fill: "var(--paper-1)"
+  }), React.createElement("rect", {
+    x: "-100",
+    y: "500",
+    width: "620",
+    height: "80",
+    fill: "var(--night-3)",
+    style: {
+      opacity: mode === 'night' ? .5 : 0,
+      transition: 'opacity var(--dur-sky)'
+    }
+  }), React.createElement("line", {
+    x1: "-100",
+    y1: "500",
+    x2: "520",
+    y2: "500",
+    stroke: "var(--ink-1)",
+    strokeWidth: "1.5"
+  }), React.createElement("line", {
+    x1: "-100",
+    y1: "524",
+    x2: "520",
+    y2: "524",
+    stroke: "var(--ink-3)",
+    strokeWidth: "1",
+    strokeDasharray: "10 8"
+  }), React.createElement(TheatreBldg, _extends({
+    x: 0,
+    mode: mode,
+    lang: lang,
+    big: true
+  }, handlers('th'))))) : React.createElement("svg", {
     className: "street-svg",
     viewBox: lay.vb,
     preserveAspectRatio: "xMidYMax meet"
@@ -1813,7 +1910,13 @@ function ConsultStreet({
     "data-screen-label": "Home consult doors"
   }, React.createElement("p", {
     className: "cs-note"
-  }, L.csNote), React.createElement("div", {
+  }, L.csNote.split('｜').map((t, n) => React.createElement(React.Fragment, {
+    key: n
+  }, n > 0 && React.createElement("span", {
+    className: "cs-sep"
+  }, "\uFF5C"), React.createElement("span", {
+    className: "cs-nw"
+  }, t)))), React.createElement("div", {
     className: "cs-street"
   }, doors.map(d => {
     const st = open === d.k ? 'open' : touch ? 'half' : 'closed';
@@ -2550,9 +2653,14 @@ function App() {
   const [veil, setVeil] = useState(false);
   const [sky, setSky] = useState('dusk');
   const [top, setTop] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+  const compact = useCompact();
   useEffect(() => {
     const f = e => setSky(e.detail);
-    const g = () => setTop(window.scrollY < window.innerHeight * .8);
+    const g = () => {
+      setTop(window.scrollY < window.innerHeight * .8);
+      setScrolled(window.scrollY > 24);
+    };
     window.addEventListener('nh-sky', f);
     window.addEventListener('scroll', g, {
       passive: true
@@ -2567,8 +2675,15 @@ function App() {
     document.documentElement.lang = lang === 'zh' ? 'zh-Hant' : lang;
   }, [lang]);
   useEffect(() => {
-    const h = location.hash.replace('#', '');
-    if (h) setTimeout(() => scrollToId(h, false), 400);
+    const f = e => {
+      if (e.persisted) setVeil(false);
+    };
+    window.addEventListener('pageshow', f);
+    return () => window.removeEventListener('pageshow', f);
+  }, []);
+  useEffect(() => {
+    const h = location.hash.slice(1);
+    if (h && !['home', 'exhibition', 'theatre'].includes(h)) setTimeout(() => scrollToId(h, false), 700);
   }, []);
   const go = (p, anchor) => {
     if (p === page) {
@@ -2583,22 +2698,26 @@ function App() {
       location.href = pageUrl(p, anchor);
     }, 280);
   };
-  useEffect(() => {
-    const f = e => {
-      if (e.persisted) setVeil(false);
-    };
-    window.addEventListener('pageshow', f);
-    return () => window.removeEventListener('pageshow', f);
-  }, []);
   const tone = page === 'exhibition' ? 'exhibit' : page === 'theatre' ? 'theatre' : 'ink';
   const consult = () => scrollToId(page === 'home' ? 'home-consult' : 'consult');
   return React.createElement(React.Fragment, null, React.createElement(NS.SiteHeader, {
     lang: lang,
     onLang: setLang,
     tone: tone,
-    dark: page === 'theatre' || page === 'home' && sky === 'night' && top,
+    dark: !(compact && scrolled) && (page === 'theatre' || page === 'home' && sky === 'night' && top),
     onConsult: consult,
-    onBrand: () => go('home')
+    onBrand: () => go('home'),
+    style: compact && scrolled ? {
+      background: 'rgba(250,247,240,.9)',
+      WebkitBackdropFilter: 'blur(10px)',
+      backdropFilter: 'blur(10px)',
+      boxShadow: '0 1px 0 var(--line-3)',
+      pointerEvents: 'auto',
+      padding: '4px var(--gutter)',
+      transition: 'background 240ms'
+    } : {
+      transition: 'background 240ms'
+    }
   }), page === 'home' && React.createElement(Home, {
     lang: lang,
     go: go
