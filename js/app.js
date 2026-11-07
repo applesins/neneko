@@ -259,7 +259,93 @@ function Reveal({
     ...rest
   }, children);
 }
+function tx(s) {
+  if (typeof s !== 'string') return s;
+  s = s.replace(/([0-9A-Za-z%]+) (?=[^\x00-\x7F])/g, '$1\u00A0');
+  const parts = s.split(/(《[^》]*》|「[^」]*」)/);
+  return parts.length === 1 ? s : parts.map((p, i) => /^[《「]/.test(p) ? React.createElement("span", {
+    key: i,
+    className: "nw"
+  }, p) : p);
+}
+function useHideZones() {
+  const [hit, setHit] = useState(false);
+  useEffect(() => {
+    const els = [document.getElementById('consult'), document.querySelector('.site-foot')].filter(Boolean);
+    if (!els.length) return;
+    const on = new Set();
+    const io = new IntersectionObserver(es => {
+      es.forEach(e => e.isIntersecting ? on.add(e.target) : on.delete(e.target));
+      setHit(on.size > 0);
+    }, {
+      threshold: 0
+    });
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+  return hit;
+}
+function NorenKit({
+  label,
+  tone = 'exhibit',
+  state = 'closed',
+  onOpen,
+  sway = true,
+  sub,
+  className = ''
+}) {
+  const chars = Array.from(label);
+  const n = chars.length;
+  const mid = (n - 1) / 2;
+  const hem = [3, 0, 2, 4, 1, 3, 0];
+  return React.createElement("div", {
+    className: 'nr nr-' + tone + ' nr-' + state + (sway ? ' nr-sway' : '') + ' ' + className,
+    style: {
+      '--n': n
+    }
+  }, React.createElement("button", {
+    className: "nr-btn",
+    onClick: onOpen,
+    "aria-expanded": state === 'open',
+    "aria-label": label,
+    tabIndex: state === 'open' ? -1 : 0
+  }, React.createElement("span", {
+    className: "nr-rod",
+    "aria-hidden": "true"
+  }, React.createElement("i", {
+    className: "nr-cap"
+  }), React.createElement("i", {
+    className: "nr-cap r"
+  })), React.createElement("span", {
+    className: "nr-row",
+    "aria-hidden": "true"
+  }, chars.map((ch, i) => {
+    const d = i < mid ? -1 : i > mid ? 1 : 0;
+    return React.createElement("span", {
+      key: i,
+      className: "nr-p",
+      style: {
+        '--d': d,
+        '--k': Math.abs(i - mid) + 1,
+        '--i': i
+      }
+    }, React.createElement("span", {
+      className: "nr-cloth",
+      style: {
+        clipPath: 'polygon(0 0,100% 0,100% calc(100% - ' + hem[(i + 1) % 7] + 'px),0 calc(100% - ' + hem[i % 7] + 'px))',
+        animationDelay: i * -1.7 + 's'
+      }
+    }, React.createElement("span", {
+      className: "nr-sleeve"
+    }), React.createElement("b", null, ch)));
+  }))), sub && React.createElement("span", {
+    className: "nr-sub"
+  }, sub));
+}
 Object.assign(window, {
+  NorenKit,
+  tx,
+  useHideZones,
   useScrolling,
   Reveal,
   SwipeDeck,
@@ -1306,18 +1392,18 @@ function Street({
     className: "street-deck"
   }, React.createElement("svg", {
     className: "street-svg is-stack",
-    viewBox: "-50 70 620 470",
+    viewBox: "-60 70 650 470",
     preserveAspectRatio: "xMidYMax meet"
   }, React.createElement("rect", {
-    x: "-60",
+    x: "-70",
     y: "500",
-    width: "640",
+    width: "670",
     height: "80",
     fill: "var(--paper-1)"
   }), React.createElement("rect", {
-    x: "-60",
+    x: "-70",
     y: "500",
-    width: "640",
+    width: "670",
     height: "80",
     fill: "var(--night-3)",
     style: {
@@ -1325,16 +1411,16 @@ function Street({
       transition: 'opacity var(--dur-sky)'
     }
   }), React.createElement("line", {
-    x1: "-60",
+    x1: "-70",
     y1: "500",
-    x2: "580",
+    x2: "600",
     y2: "500",
     stroke: "var(--ink-1)",
     strokeWidth: "1.5"
   }), React.createElement("line", {
-    x1: "-60",
+    x1: "-70",
     y1: "524",
-    x2: "580",
+    x2: "600",
     y2: "524",
     stroke: "var(--ink-3)",
     strokeWidth: "1",
@@ -1522,12 +1608,11 @@ function ConsultDesk({
   }, React.createElement("div", {
     className: "desk-m-noren",
     "aria-hidden": open ? 'true' : undefined
-  }, React.createElement(NS.Noren, {
+  }, React.createElement(NorenKit, {
     label: th ? '劇場相談室' : '展覽相談室',
     tone: tone,
-    open: open,
+    state: open ? 'open' : 'closed',
     onOpen: openM,
-    height: 130,
     sway: !reduced
   })), React.createElement("div", {
     className: "desk-m-intro"
@@ -1535,7 +1620,7 @@ function ConsultDesk({
     className: "desk-m-title"
   }, th ? L.thQ : L.exQ), React.createElement("p", {
     className: "desk-m-desc"
-  }, (th ? L.roomTh : L.roomEx).split('\n')[0]), React.createElement("p", {
+  }, tx(th ? L.roomTh : L.roomEx)), React.createElement("p", {
     className: "desk-m-free"
   }, L.csNote.split('｜')[0]), !open && React.createElement("button", {
     className: 'desk-m-open ' + (th ? 'is-th' : 'is-ex'),
@@ -1658,13 +1743,12 @@ function ConsultDesk({
       pointerEvents: open ? 'none' : 'auto'
     },
     onMouseEnter: () => !touch && setOpen(true)
-  }, React.createElement(NS.Noren, {
+  }, React.createElement(NorenKit, {
     label: th ? '劇場相談室' : '展覽相談室',
     tone: tone,
     sub: L.norenSub,
-    open: open,
+    state: open ? 'open' : 'closed',
     onOpen: () => setOpen(true),
-    height: compact ? 100 : 140,
     sway: !reduced
   })), React.createElement("div", {
     className: "desk-content",
@@ -1816,11 +1900,12 @@ function Home({
   }), L.cv)), L.about.map((p, n) => React.createElement("p", {
     key: n,
     className: "about-lead"
-  }, p)), React.createElement("p", {
+  }, tx(p))), React.createElement("p", {
     className: "about-cities",
     "aria-label": "Leeds, Taipei, Melbourne, Osaka"
-  }, ['Leeds', 'Taipei', 'Melbourne', 'Osaka'].map((c, n) => React.createElement(React.Fragment, {
-    key: c
+  }, ['Leeds', 'Taipei', 'Melbourne', 'Osaka'].map((c, n) => React.createElement("span", {
+    key: c,
+    className: "ac-seg"
   }, n > 0 && React.createElement("span", {
     className: "ac-arrow",
     "aria-hidden": "true"
@@ -1969,7 +2054,7 @@ function ConsultStreet({
       className: "cs-q"
     }, d.q), React.createElement("p", {
       className: "cs-egg"
-    }, d.egg), React.createElement("div", {
+    }, tx(d.egg)), React.createElement("div", {
       className: "cs-open"
     }, React.createElement("div", {
       className: "cs-interior",
@@ -2000,11 +2085,15 @@ function ConsultStreet({
     }, d.cta, React.createElement(Icon, {
       name: "arrow-right",
       size: 16
-    }))), React.createElement(CsNoren, {
+    }))), React.createElement("div", {
+      className: "cs-noren2"
+    }, React.createElement(NorenKit, {
+      label: d.noren,
       tone: d.tone,
       state: st,
-      label: d.noren
-    })), d.k === 'th' && React.createElement("span", {
+      onOpen: () => {},
+      sway: true
+    }))), d.k === 'th' && React.createElement("span", {
       className: "cs-poster",
       "aria-hidden": "true"
     }, React.createElement("b", null, L.poster), React.createElement("i", null), React.createElement("small", null, "\u306D\u306D\u30CD\u30B3")));
@@ -2324,7 +2413,7 @@ function RoomM({
   }))), React.createElement(NS.Plaque, {
     number: L.room + ' ' + r.n,
     year: r.year,
-    title: r.title,
+    title: tx(r.title),
     client: r.client[lang],
     role: r.role[lang],
     note: L.placeholder,
@@ -2386,9 +2475,13 @@ function RoomDetail({
     size: 18
   }), L.back), React.createElement("span", {
     className: "detail-num"
-  }, L.room, " ", r.n, " \xB7 ", r.year), React.createElement("h2", null, r.title), React.createElement("p", {
+  }, L.room, " ", r.n, " \xB7 ", r.year), React.createElement("h2", null, tx(r.title)), React.createElement("p", {
     className: "detail-meta"
-  }, L.client, "\uFF1A", r.client[lang], "\u3000", L.role, "\uFF1A", r.role[lang]), React.createElement("div", {
+  }, React.createElement("span", {
+    className: "dm"
+  }, L.client, "\uFF1A", r.client[lang]), React.createElement("span", {
+    className: "dm"
+  }, L.role, "\uFF1A", r.role[lang])), React.createElement("div", {
     className: "detail-cols"
   }, [L.challenge, L.approach, L.result].map(h => React.createElement("div", {
     key: h
@@ -2413,16 +2506,7 @@ function Exhibition({
   const gRef = useRef(null);
   const p = useProgress(gRef);
   const scrolling = useScrolling();
-  const [inDesk, setInDesk] = useState(false);
-  useEffect(() => {
-    const el = document.getElementById('consult');
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInDesk(e.isIntersecting), {
-      threshold: 0
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const inDesk = useHideZones();
   const [vw, setVw] = useState(window.innerWidth);
   const [cur, setCur] = useState('r01');
   const [visited, setVisited] = useState([]);
@@ -2713,10 +2797,10 @@ function ActM({
     size: 14
   })))), React.createElement(NS.Playbill, {
     year: a.year,
-    title: a.title,
+    title: tx(a.title),
     rows: [{
       k: L.team,
-      v: a.team[lang]
+      v: tx(a.team[lang])
     }, {
       k: L.role,
       v: a.role[lang]
@@ -2769,9 +2853,15 @@ function ActDetail({
     size: 18
   }), T.back), React.createElement("span", {
     className: "detail-num"
-  }, a.n[lang], "\u30FB", a.year), React.createElement("h2", null, a.title), React.createElement("p", {
+  }, a.n[lang], "\u30FB", a.year), React.createElement("h2", null, tx(a.title)), React.createElement("p", {
     className: "detail-meta"
-  }, L.team, "\uFF1A", a.team[lang], "\u3000", T.venue, "\uFF1A", T.tbc, "\u3000", L.role, "\uFF1A", a.role[lang]), React.createElement("div", {
+  }, React.createElement("span", {
+    className: "dm"
+  }, L.team, "\uFF1A", tx(a.team[lang])), React.createElement("span", {
+    className: "dm"
+  }, T.venue, "\uFF1A", T.tbc), React.createElement("span", {
+    className: "dm"
+  }, L.role, "\uFF1A", a.role[lang])), React.createElement("div", {
     className: "detail-hero"
   }, React.createElement(NS.PhotoFrame, {
     tone: "night",
@@ -2825,7 +2915,7 @@ function BowM({
     className: "bow-stage"
   }, React.createElement("span", {
     className: "bow-label"
-  }, L.curtainCall), React.createElement("h2", null, L.bowTitle), React.createElement("p", null, L.bowSub)), React.createElement(NS.Curtain, {
+  }, L.curtainCall), React.createElement("h2", null, tx(L.bowTitle)), React.createElement("p", null, L.bowSub)), React.createElement(NS.Curtain, {
     open: reduced ? 0 : v ? 0 : 1,
     valance: false,
     duration: reduced ? undefined : 1400,
@@ -2850,16 +2940,7 @@ function Theatre({
   const [cur, setCur] = useState(null);
   const [detail, setDetail] = useState(null);
   const scrolling = useScrolling();
-  const [inDesk, setInDesk] = useState(false);
-  useEffect(() => {
-    const el = document.getElementById('consult');
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInDesk(e.isIntersecting), {
-      threshold: 0
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const inDesk = useHideZones();
   useEffect(() => {
     const io = new IntersectionObserver(es => es.forEach(e => {
       if (e.isIntersecting) setCur(e.target.id === 'bow' ? 'bow' : e.target.id.replace('act-', ''));

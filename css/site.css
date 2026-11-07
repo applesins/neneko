@@ -706,4 +706,81 @@ a:hover{color:var(--exhibit)}
 .th-m .program-dock,.th-m .program-dock.is-compact,.exhibition .floormap-dock,.exhibition .floormap-dock.is-compact{left:var(--gutter)!important;justify-content:flex-start}
 .th-m .program-dock.is-compact nav,.exhibition .floormap-dock.is-compact nav{width:auto!important;min-width:150px;margin:0}
 .th-m .program-dock.is-compact nav>button,.exhibition .floormap-dock.is-compact nav>button{gap:14px;justify-content:space-between}
+.detail-meta{display:flex;flex-wrap:wrap;gap:4px 1em}
+.ac-seg{display:inline-flex;align-items:center;gap:12px;white-space:nowrap}
+@media (max-width:767px){
+body{word-break:keep-all;line-break:strict;overflow-wrap:break-word}
+h1,h2,h3,.cs-q,.desk-m-title,.voices-cta,.tagline{text-wrap:balance}
+p,dd,li,blockquote,figcaption{text-wrap:pretty}
+.nw{white-space:nowrap}
+.detail-meta{flex-direction:column;gap:4px}
+.detail-meta .dm{display:block}
+.about-cities{gap:4px 8px;font-size:11px;letter-spacing:.14em}
+.ac-seg{gap:8px}
+.ex-intro .ex-title.tategaki{max-height:none}
+.desk-m-desc{white-space:pre-line}
+.ticket-btn{font-family:var(--font-sans)}
+.ticket-btn>div>div:first-child{padding:20px 16px 18px!important;gap:10px!important}
+.ticket-btn>div>div:first-child>span:nth-child(2){font-size:19px!important;line-height:1.45!important;letter-spacing:.04em!important}
+.ticket-btn>div>div:first-child>span:nth-child(3){font-family:var(--font-sans);line-height:1.5}
+.ticket-btn>div>div:last-child{width:76px!important;padding:16px 8px!important}
+.ticket-btn>div>div:first-child>div:last-child{flex-wrap:wrap!important;gap:4px 12px!important}
+.th-m .program-dock,.th-m .program-dock.is-compact,.exhibition .floormap-dock,.exhibition .floormap-dock.is-compact{left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;display:flex!important;justify-content:center!important}
+.ex-m~.site-foot,.th-m~.site-foot{padding-bottom:84px}
+.sky-pivot{transform:none!important;left:auto!important;right:44px;top:96px;bottom:auto}
+.sun,.moon{top:-26px;left:-26px;width:52px;height:52px}
+.cloud{animation:none}.c1{top:9%;left:-30px;width:110px}.c2{top:21%;left:auto;right:-24px;width:84px}.c3{display:none}
+.street-top{position:relative;z-index:2}
+.byline{background:rgba(250,247,240,.9)}
+.street-inner{justify-content:flex-start}
+.street-deck{flex:0 0 auto;margin-top:10px}
+.street-deck .deck-slide{padding:0 6px}
+.street-deck .street-svg.is-stack{max-height:none}
+.street-hint{margin-top:auto}
+.deck-arrow{width:36px;height:44px;margin-top:-22px;background:none!important;box-shadow:none}
+.deck-arrow::before{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:rgba(250,247,240,.82);box-shadow:var(--shadow-paper)}
+.deck.is-dark .deck-arrow::before{background:rgba(23,21,19,.62)}
+.deck-arrow>span{position:relative;width:16px!important;height:16px!important}
+.deck-arrow.prev{left:-2px}.deck-arrow.next{right:-2px}
+.cs-deck .deck-slide{padding:0 32px}
+}
+/* noren v2 */
+.nr{--pw:84px;position:relative;width:100%;max-width:calc(var(--n) * var(--pw) + 32px);margin:0 auto;padding:0 16px;box-sizing:border-box;container-type:inline-size;display:flex;flex-direction:column;align-items:center}
+.nr-btn{position:relative;display:block;width:100%;padding:10px 0 0;border:0;background:none;cursor:pointer}
+.nr-rod{position:absolute;left:-14px;right:-14px;top:6px;height:9px;border-radius:9px;background:linear-gradient(#C9A27A,#9A7148 55%,#5E4127);box-shadow:0 2px 3px rgba(0,0,0,.25);z-index:0}
+.nr-cap{position:absolute;left:-5px;top:50%;width:13px;height:13px;margin-top:-6.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#D9B48A,#7A5534 70%);box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.nr-cap.r{left:auto;right:-5px}
+.nr-row{position:relative;z-index:1;display:flex;gap:3px;justify-content:center}
+.nr-p{flex:1 1 0;min-width:0;transform-origin:50% 0;transition:transform 700ms var(--ease-out),opacity 500ms var(--ease-out)}
+.nr-cloth{position:relative;display:block;width:100%;aspect-ratio:1 / 2.3;margin-top:-6px;transform-origin:50% 0;border-radius:0 0 2px 2px;box-shadow:inset 0 -14px 0 -8px rgba(0,0,0,.08)}
+.nr-exhibit .nr-cloth{background:var(--matcha-1)}.nr-theatre .nr-cloth{background:var(--shu-1)}.nr-ink .nr-cloth{background:var(--ink-1)}
+.nr-sleeve{position:absolute;left:0;right:0;top:0;height:20px;border-radius:3px 3px 0 0;background:linear-gradient(rgba(0,0,0,.18),rgba(255,255,255,.06) 45%,rgba(0,0,0,.14));box-shadow:inset 0 -1px 0 rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.12)}
+.nr-cloth b{position:absolute;left:0;right:0;top:30%;transform:translateY(-50%);text-align:center;font-family:var(--font-serif);font-weight:500;color:var(--paper-0);font-size:clamp(13px,calc((100cqw - 32px) / var(--n) * .46),40px);line-height:1}
+.nr-sway .nr-cloth{animation:nr-sway 6.5s ease-in-out infinite}
+@keyframes nr-sway{0%,100%{transform:rotate(0) skewX(0)}35%{transform:rotate(.9deg) skewX(-.6deg)}70%{transform:rotate(-.7deg) skewX(.5deg)}}
+.nr-half .nr-p{transform:translateX(calc(var(--d) * var(--k) * 14%)) rotate(calc(var(--d) * 2deg))}
+.nr-open .nr-p{transform:translateX(calc(var(--d) * (var(--k) * 40% + 60%))) rotate(calc(var(--d) * 7deg));opacity:0}
+.nr-open .nr-p[style*="--d: 0"],.nr-open .nr-p[style*="--d:0"]{transform:scaleY(.12);opacity:0}
+.nr-open .nr-rod{opacity:0;transition:opacity 500ms 300ms}
+.nr-sub{margin-top:14px;font-family:var(--font-sans);font-size:12px;letter-spacing:.24em;color:var(--ink-3)}
+.nr-open .nr-sub{opacity:0}
+.desk-noren .nr,.desk-m-noren .nr{pointer-events:auto}
+.desk-d .desk-noren{height:auto;justify-content:center}
+.desk-d.is-open .desk-noren{height:0}
+.desk-m-noren{height:auto!important;overflow:visible}
+.desk-m.is-open .desk-m-noren{height:0!important;overflow:hidden}
+.cs-noren{display:none}
+.cs-noren2{position:absolute;left:0;right:0;top:0;z-index:3;pointer-events:none}
+.cs-noren2 .nr{--pw:60px}
+.cs-noren2 .nr-btn{cursor:default}
+.cs-th .cs-noren2{top:36px}
+@media (max-width:767px){
+.nr{max-width:min(90%,calc(var(--n) * var(--pw) + 32px))}
+.cs-deck .cs-noren2 .nr{--pw:46px}
+.cs-deck .cs-th .cs-noren2{top:30px}
+.desk-m .nr{--pw:56px}
+}
+@media (prefers-reduced-motion:reduce){.nr-sway .nr-cloth{animation:none}.nr-p{transition:none}}
+.cs-ex .cs-counter{left:27%;right:27%}.cs-ex .cs-uketsuke{right:33%}
+@media (max-width:767px){.street-deck .deck-slide{padding:0 12px}}
 a{color:var(--ink-1)}a:hover{color:var(--matcha-1)}
